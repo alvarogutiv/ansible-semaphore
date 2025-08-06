@@ -1,0 +1,25 @@
+---
+- name: Crear usuario de dominio vía PowerShell
+  hosts: windows
+  gather_facts: no
+
+  vars:
+    ou_path: "CN=Users,DC=cictest-ansible,DC=local"
+
+  tasks:
+    - name: Crear usuario en Active Directory con PowerShell
+      win_shell: |
+        $password = ConvertTo-SecureString "{{ contrasena }}" -AsPlainText -Force
+        New-ADUser `
+          -Name "{{ nombre_completo }}" `
+          -SamAccountName "{{ usuario }}" `
+          -AccountPassword $password `
+          -Enabled $true `
+          -Path "{{ ou_path }}" `
+          -PasswordNeverExpires $true `
+          -ChangePasswordAtLogon $false
+      register: resultado
+
+    - name: Mostrar salida de PowerShell
+      debug:
+        var: resultado.stdout_lines
