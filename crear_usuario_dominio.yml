@@ -26,8 +26,8 @@
           -AccountPassword $password `
           -Enabled $true `
           -Path "CN=Users,DC=cictest-ansible,DC=local" `
-          -PasswordNeverExpires $true `
-          -ChangePasswordAtLogon $false
+          -PasswordNeverExpires $false `
+          -ChangePasswordAtLogon $true
       register: resultado
 
     - name: Mostrar salida de PowerShell
