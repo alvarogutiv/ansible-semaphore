@@ -3,21 +3,27 @@
   hosts: windows
   gather_facts: no
 
+  # Lista de departamentos. Cada entrada incluye:
+  # - código: código del departamento (clave de entrada)
+  # - nombre: nombre legible del departamento
+  # - ou: ruta completa a la Unidad Organizativa en AD
+  # - grupo: nombre del grupo del departamento (presente dentro de la misma OU)
   vars:
     departamentos:
       - codigo: "000"
         nombre: "Gestión Interna"
-        ou: "OU=000_Gestion_interna,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        ou: "OU=000_Gestion_interna,OU=departamentos_Madrid,DC=cictest-ansible,DC=local"
         grupo: "Gr_000_Gestión_Interna"
       - codigo: "003"
         nombre: "Fábrica"
-        ou: "OU=003_Fabrica,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        ou: "OU=003_Fabrica,OU=departamentos_Santander,DC=cictest-ansible,DC=local"
         grupo: "Gr_003_Fabrica"
       - codigo: "004"
         nombre: "Marketing y Comercial"
-        ou: "OU=004_Marketing_y_Comercial,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        ou: "OU=004_Marketing_y_Comercial,OU=departamentos_Madrid,DC=cictest-ansible,DC=local"
         grupo: "Gr_004_Marketing_y_Comercial"
 
+  # Preguntar al operador los datos necesarios para crear el usuario
   vars_prompt:
     - name: "usuario"
       prompt: "Introduce el nombre de usuario (sAMAccountName)"
@@ -41,15 +47,19 @@
       private: no
 
   tasks:
+
+    # Buscar en la lista de departamentos el que coincida con el código introducido
     - name: Obtener info del departamento seleccionado
       set_fact:
         departamento_seleccionado: "{{ departamentos | selectattr('codigo', 'equalto', codigo_departamento) | list | first }}"
 
-    - name: Validar que el departamento existe
+    # Validar si el departamento existe (en caso de código erróneo)
+    - name: Validar que el código de departamento existe
       fail:
         msg: "El código de departamento {{ codigo_departamento }} no es válido."
       when: departamento_seleccionado is not defined
 
+    # Crear el usuario en la OU correspondiente
     - name: Crear usuario en Active Directory
       win_shell: |
         $password = ConvertTo-SecureString "{{ contrasena }}" -AsPlainText -Force
@@ -63,13 +73,25 @@
           -ChangePasswordAtLogon $true
       register: resultado_creacion
 
+    # Añadir el usuario al grupo correspondiente del departamento
     - name: Añadir usuario al grupo de departamento
       win_shell: |
         Add-ADGroupMember -Identity "{{ departamento_seleccionado.grupo }}" -Members "{{ usuario }}"
       register: resultado_grupo
 
+    # Mostrar información de resultado al operador
     - name: Mostrar resultados
       debug:
         msg:
           - "Usuario creado en OU: {{ departamento_seleccionado.ou }}"
           - "Añadido al grupo: {{ departamento_seleccionado.grupo }}"
+
+    # Verificar que el usuario se ha creado correctamente
+    - name: Obtener información del usuario recién creado
+      win_shell: |
+        Get-ADUser -Identity "{{ usuario }}" | Select-Object Name, SamAccountName, DistinguishedName, Enabled | Format-List
+      register: info_usuario
+
+    - name: Mostrar información del usuario
+      debug:
+        msg: "{{ info_usuario.stdout_lines }}"
