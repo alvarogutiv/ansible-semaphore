@@ -1,0 +1,75 @@
+---
+- name: Crear usuario de dominio vía PowerShell
+  hosts: windows
+  gather_facts: no
+
+  vars:
+    departamentos:
+      - codigo: "000"
+        nombre: "Gestión Interna"
+        ou: "OU=000_Gestion_interna,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        grupo: "Gr_000_Gestión_Interna"
+      - codigo: "003"
+        nombre: "Fábrica"
+        ou: "OU=003_Fabrica,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        grupo: "Gr_003_Fabrica"
+      - codigo: "004"
+        nombre: "Marketing y Comercial"
+        ou: "OU=004_Marketing_y_Comercial,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
+        grupo: "Gr_004_Marketing_y_Comercial"
+
+  vars_prompt:
+    - name: "usuario"
+      prompt: "Introduce el nombre de usuario (sAMAccountName)"
+      private: no
+
+    - name: "nombre_completo"
+      prompt: "Introduce el nombre completo del usuario"
+      private: no
+
+    - name: "contrasena"
+      prompt: "Introduce la contraseña inicial"
+      private: yes
+
+    - name: "codigo_departamento"
+      prompt: |
+        Introduce el código de departamento.
+        Opciones disponibles:
+        {% for dep in departamentos %}
+        {{ dep.codigo }} - {{ dep.nombre }}
+        {% endfor %}
+      private: no
+
+  tasks:
+    - name: Obtener info del departamento seleccionado
+      set_fact:
+        departamento_seleccionado: "{{ departamentos | selectattr('codigo', 'equalto', codigo_departamento) | list | first }}"
+
+    - name: Validar que el departamento existe
+      fail:
+        msg: "El código de departamento {{ codigo_departamento }} no es válido."
+      when: departamento_seleccionado is not defined
+
+    - name: Crear usuario en Active Directory
+      win_shell: |
+        $password = ConvertTo-SecureString "{{ contrasena }}" -AsPlainText -Force
+        New-ADUser `
+          -Name "{{ nombre_completo }}" `
+          -SamAccountName "{{ usuario }}" `
+          -AccountPassword $password `
+          -Enabled $true `
+          -Path "{{ departamento_seleccionado.ou }}" `
+          -PasswordNeverExpires $false `
+          -ChangePasswordAtLogon $true
+      register: resultado_creacion
+
+    - name: Añadir usuario al grupo de departamento
+      win_shell: |
+        Add-ADGroupMember -Identity "{{ departamento_seleccionado.grupo }}" -Members "{{ usuario }}"
+      register: resultado_grupo
+
+    - name: Mostrar resultados
+      debug:
+        msg:
+          - "Usuario creado en OU: {{ departamento_seleccionado.ou }}"
+          - "Añadido al grupo: {{ departamento_seleccionado.grupo }}"
