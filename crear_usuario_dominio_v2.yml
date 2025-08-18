@@ -12,15 +12,15 @@
     departamentos:
       - codigo: "000"
         nombre: "Gestión Interna"
-        ou: "OU=000_Gestion_interna,OU=departamentos_Madrid,DC=cictest-ansible,DC=local"
+        ou: "OU=000_Gestion_interna,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
         grupo: "Gr_000_Gestión_Interna"
       - codigo: "003"
         nombre: "Fábrica"
-        ou: "OU=003_Fabrica,OU=departamentos_Santander,DC=cictest-ansible,DC=local"
+        ou: "OU=003_Fabrica,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
         grupo: "Gr_003_Fabrica"
       - codigo: "004"
         nombre: "Marketing y Comercial"
-        ou: "OU=004_Marketing_y_Comercial,OU=departamentos_Madrid,DC=cictest-ansible,DC=local"
+        ou: "OU=004_Marketing_y_Comercial,OU=departamentos_empresa,DC=cictest-ansible,DC=local"
         grupo: "Gr_004_Marketing_y_Comercial"
 
   # Preguntar al operador los datos necesarios para crear el usuario
